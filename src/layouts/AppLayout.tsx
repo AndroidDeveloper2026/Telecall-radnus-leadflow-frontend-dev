@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Bell, BarChart3, ChevronDown, FileText, History, LayoutDashboard, ListChecks, LogOut, Menu, Phone, Search, Settings, Users, Contact as ContactIcon, CalendarClock, PhoneCall, UserCircle, UserCog } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { get, patch } from '../services/api';
+import { get, patch, warmUp } from '../services/api';
 import { useSocketEvent } from '../hooks/hooks';
 import { Logo } from '../components/ui';
 import { Notice } from '../types';
@@ -42,6 +42,8 @@ function Bell_() {
 
 export default function AppLayout() {
   const { user, logout } = useAuth(); const nav = useNavigate(); const [side, setSide] = useState(false); const [collapsed, setCollapsed] = useState(false); const [menu, setMenu] = useState(false); const [q, setQ] = useState(''); const ref = useRef<HTMLDivElement>(null);
+  const [waking, setWaking] = useState(false);
+  useEffect(() => { const on = () => setWaking(true); const off = () => setWaking(false); window.addEventListener('api:waking', on); window.addEventListener('api:awake', off); warmUp(); return () => { window.removeEventListener('api:waking', on); window.removeEventListener('api:awake', off); }; }, []);
   const admin = user!.role === 'ADMIN'; const coord = user!.role === 'COORDINATOR'; const items = admin ? ADMIN_NAV : coord ? COORD_NAV : EMP_NAV;
   useEffect(() => { const f = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setMenu(false); }; document.addEventListener('mousedown', f); return () => document.removeEventListener('mousedown', f); }, []);
   const search = (e: React.FormEvent) => { e.preventDefault(); nav(`${admin || coord ? '/contacts' : '/my-contacts'}?search=${encodeURIComponent(q)}`); };
@@ -72,7 +74,7 @@ export default function AppLayout() {
           ))}</nav>
         </aside>
         {side && <div className="fixed inset-0 top-[72px] z-10 bg-[#1e0b3a]/40 lg:hidden" onClick={() => setSide(false)} />}
-        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8"><Outlet /></main>
+        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">{waking && <div role="status" className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">Server is starting up — this can take up to a minute. Data will load automatically.</div>}<Outlet /></main>
       </div>
     </div>
   );
